@@ -3,11 +3,15 @@ package nl.architolk.excel2rdf;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.lang.Runnable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -19,9 +23,12 @@ import org.apache.jena.riot.RDFLanguages;
 import org.apache.poi.ss.format.CellFormat;
 import org.apache.poi.ss.format.CellFormatResult;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.slf4j.Logger;
@@ -51,6 +58,7 @@ public class Convert implements Runnable{
 
   private Model outModel;
   private Resource workbookResource;
+  private FormulaEvaluator evaluator;
 
   @Override
   public void run() {
@@ -80,11 +88,35 @@ public class Convert implements Runnable{
     return format;
   }
 
-  private String getCellValue(Cell cell) {
-    CellStyle style = cell.getCellStyle();
-    CellFormat cf = CellFormat.getInstance(style.getDataFormatString());
-    CellFormatResult result = cf.apply(cell);
-    return result.text;
+  private Object getCellValue(Cell cell) {
+
+    evaluator.evaluateInCell(cell);
+
+    switch (cell.getCellType()) {
+      case CellType.BOOLEAN:
+        return cell.getBooleanCellValue();
+      case CellType.NUMERIC:
+        if (DateUtil.isCellDateFormatted(cell)) {
+          return cell.getLocalDateTimeCellValue();
+        } else {
+          double value = cell.getNumericCellValue();
+          if ((value % 1) ==0) {
+            return BigDecimal.valueOf(value).toBigInteger(); //Nothing behind the decimal point
+          } else {
+            return BigDecimal.valueOf(value); //Something behind the decimal point
+          }
+        }
+      case CellType.STRING:
+        return cell.getStringCellValue();
+      case CellType.BLANK:
+        return null;
+      case CellType.ERROR:
+        return null;
+      case CellType.FORMULA:
+        //Will never happen
+      default:
+        return null;
+    }
   }
 
   private void convertSheet(int index, Sheet sheet) {
@@ -103,9 +135,12 @@ public class Convert implements Runnable{
       if (needFirstRow) {
         needFirstRow = false;
         for (Cell cell : row) {
-          String colname = getCellValue(cell);
-          if (!colname.isEmpty()) {
-            properties.put(cell.getColumnIndex(),ResourceFactory.createProperty(PROPERTY_NAMESPACE,colname.replace(" ","_").replaceAll("[^a-zA-Z0-9_-]","")));
+          Object colname = getCellValue(cell);
+          if (colname!=null) {
+            String colnamestr = colname.toString();
+            if (!colnamestr.isEmpty()) {
+              properties.put(cell.getColumnIndex(),ResourceFactory.createProperty(PROPERTY_NAMESPACE,colnamestr.replace(" ","_").replaceAll("[^a-zA-Z0-9_-]","")));
+            }
           }
         }
       } else {
@@ -113,13 +148,21 @@ public class Convert implements Runnable{
         Resource rowResource = outModel.createResource("urn:excel:sheet"+index+":row"+row.getRowNum())
                                           .addProperty(RDF.type, CSVW.Row)
                                           .addProperty(CSVW.describes,subjectResource)
-                                          .addLiteral(CSVW.rownum,row.getRowNum());
+                                          .addLiteral(CSVW.rownum,BigInteger.valueOf(row.getRowNum()));
         for (Cell cell : row) {
-          String value = getCellValue(cell);
-          if (!value.isEmpty()) {
-            Property property = properties.get(cell.getColumnIndex());
-            if (property!=null) {
-              subjectResource.addProperty(property,value);
+          Object value = getCellValue(cell);
+          if (value!=null) {
+            String valuestr = value.toString();
+            if (!valuestr.isEmpty()) {
+              Property property = properties.get(cell.getColumnIndex());
+              if (property!=null) {
+                //subjectResource.addProperty(property,valuestr);
+                if (value instanceof java.time.LocalDateTime) {
+                  subjectResource.addLiteral(property,ResourceFactory.createTypedLiteral(DateTimeFormatter.ISO_LOCAL_DATE.format((java.time.LocalDateTime)value),XSDDatatype.XSDdate));
+                } else {
+                  subjectResource.addLiteral(property,value);
+                }
+              }
             }
           }
         }
@@ -139,6 +182,7 @@ public class Convert implements Runnable{
 
       FileInputStream fileIn = new FileInputStream(inputFile);
       Workbook wb = WorkbookFactory.create(fileIn);
+      evaluator = wb.getCreationHelper().createFormulaEvaluator();
 
       outModel = ModelFactory.createDefaultModel();
 
