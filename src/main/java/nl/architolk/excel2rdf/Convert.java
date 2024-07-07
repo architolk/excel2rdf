@@ -90,7 +90,14 @@ public class Convert implements Runnable{
 
   private Object getCellValue(Cell cell) {
 
-    evaluator.evaluateInCell(cell);
+    try {
+      evaluator.evaluateInCell(cell);
+    }
+    catch (Exception e) {
+      //If the function is not implemented, we need a work-around
+      //Which is simple: do nothing :-)
+      LOG.warn("Could not evaluate cell: {}",cell.getAddress());
+    }
 
     switch (cell.getCellType()) {
       case CellType.BOOLEAN:
@@ -113,7 +120,7 @@ public class Convert implements Runnable{
       case CellType.ERROR:
         return null;
       case CellType.FORMULA:
-        //Will never happen
+        //Will only happen when evaluation of the formula fails
       default:
         return null;
     }
@@ -149,6 +156,7 @@ public class Convert implements Runnable{
                                           .addProperty(RDF.type, CSVW.Row)
                                           .addProperty(CSVW.describes,subjectResource)
                                           .addLiteral(CSVW.rownum,BigInteger.valueOf(row.getRowNum()));
+        sheetResource.addProperty(CSVW.row,rowResource);
         for (Cell cell : row) {
           Object value = getCellValue(cell);
           if (value!=null) {

@@ -12,6 +12,7 @@ public class CSVW {
   public final static Resource Table = ResourceFactory.createResource(namespace + "Table");
   public final static Resource Row = ResourceFactory.createResource(namespace + "Row");
   public final static Property table = ResourceFactory.createProperty(namespace, "table");
+  public final static Property row = ResourceFactory.createProperty(namespace, "row");
   public final static Property describes = ResourceFactory.createProperty(namespace, "describes");
   public final static Property rownum = ResourceFactory.createProperty(namespace, "rownum");
 
