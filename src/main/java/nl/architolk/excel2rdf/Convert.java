@@ -14,7 +14,7 @@ import java.util.HashMap;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.Property;
+//import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.riot.RDFDataMgr;
@@ -134,7 +134,7 @@ public class Convert implements Runnable{
 
     Boolean needFirstRow = true;
 
-    Map<Integer,Property> properties = new HashMap<>();
+    Map<Integer,ExtendedProperty> properties = new HashMap<>();
 
     Iterator<Row> rows = sheet.rowIterator();
     while (rows.hasNext()) {
@@ -146,7 +146,7 @@ public class Convert implements Runnable{
           if (colname!=null) {
             String colnamestr = colname.toString();
             if (!colnamestr.isEmpty()) {
-              properties.put(cell.getColumnIndex(),ResourceFactory.createProperty(PROPERTY_NAMESPACE,colnamestr.replace(" ","_").replaceAll("[^a-zA-Z0-9_-]","")));
+              properties.put(cell.getColumnIndex(),new ExtendedProperty(ResourceFactory.createProperty(PROPERTY_NAMESPACE,colnamestr.replace(" ","_").replaceAll("[^a-zA-Z0-9_-]",""))));
             }
           }
         }
@@ -162,13 +162,25 @@ public class Convert implements Runnable{
           if (value!=null) {
             String valuestr = value.toString();
             if (!valuestr.isEmpty()) {
-              Property property = properties.get(cell.getColumnIndex());
+              ExtendedProperty property = properties.get(cell.getColumnIndex());
               if (property!=null) {
                 //subjectResource.addProperty(property,valuestr);
                 if (value instanceof java.time.LocalDateTime) {
-                  subjectResource.addLiteral(property,ResourceFactory.createTypedLiteral(DateTimeFormatter.ISO_LOCAL_DATE.format((java.time.LocalDateTime)value),XSDDatatype.XSDdate));
+                  subjectResource.addLiteral(property.getFullProperty(),ResourceFactory.createTypedLiteral(DateTimeFormatter.ISO_LOCAL_DATE.format((java.time.LocalDateTime)value),XSDDatatype.XSDdate));
                 } else {
-                  subjectResource.addLiteral(property,value);
+                  subjectResource.addLiteral(property.getFullProperty(),value);
+                  if (value instanceof String) {
+                    //In case of line breaks, split value
+                    String[] strvalues = valuestr.split("[\\n]");
+                    if (strvalues.length>1) {
+                      for (String part : strvalues) {
+                        String trimpart = part.trim();
+                        if (!trimpart.isEmpty()) {
+                          subjectResource.addLiteral(property.getLineProperty(),trimpart);
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
