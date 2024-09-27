@@ -3,7 +3,7 @@
 	<groupId>nl.architolk.excel2rdf</groupId>
 	<artifactId>excel2rdf</artifactId>
 	<packaging>jar</packaging>
-	<version>0.0.1</version>
+	<version>1.0.0</version>
 	<name>excel2rdf</name>
   <properties>
       <maven.compiler.release>21</maven.compiler.release>
