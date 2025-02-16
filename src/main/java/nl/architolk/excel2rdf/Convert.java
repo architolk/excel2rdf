@@ -160,7 +160,7 @@ public class Convert implements Runnable{
         for (Cell cell : row) {
           Object value = getCellValue(cell);
           if (value!=null) {
-            String valuestr = value.toString();
+            String valuestr = value.toString().replaceAll("[^(\\u000A|\\u0009|\\u0020-\\uFFFF)]", ""); //Remove illegal characters
             if (!valuestr.isEmpty()) {
               ExtendedProperty property = properties.get(cell.getColumnIndex());
               if (property!=null) {
@@ -168,8 +168,8 @@ public class Convert implements Runnable{
                 if (value instanceof java.time.LocalDateTime) {
                   subjectResource.addLiteral(property.getFullProperty(),ResourceFactory.createTypedLiteral(DateTimeFormatter.ISO_LOCAL_DATE.format((java.time.LocalDateTime)value),XSDDatatype.XSDdate));
                 } else {
-                  subjectResource.addLiteral(property.getFullProperty(),value);
                   if (value instanceof String) {
+                    subjectResource.addLiteral(property.getFullProperty(),valuestr);
                     //In case of line breaks, split value
                     String[] strvalues = valuestr.split("[\\n]");
                     if (strvalues.length>1) {
@@ -180,6 +180,8 @@ public class Convert implements Runnable{
                         }
                       }
                     }
+                  } else {
+                    subjectResource.addLiteral(property.getFullProperty(),value);
                   }
                 }
               }
