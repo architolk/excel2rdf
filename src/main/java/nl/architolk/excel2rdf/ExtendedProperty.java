@@ -7,10 +7,12 @@ public class ExtendedProperty  {
 
   protected Property fullProperty;
   protected Property lineProperty;
+  protected Property hyperlinkProperty;
 
   public ExtendedProperty(Property property) {
     fullProperty = property;
     lineProperty = ResourceFactory.createProperty(property.getNameSpace(),property.getLocalName() + "_line");
+    hyperlinkProperty = ResourceFactory.createProperty(property.getNameSpace(),property.getLocalName() + "_hyperlink");
   }
 
   public Property getFullProperty() {
@@ -19,6 +21,10 @@ public class ExtendedProperty  {
 
   public Property getLineProperty() {
     return lineProperty;
+  }
+
+  public Property getHyperlinkProperty() {
+    return hyperlinkProperty;
   }
 
 }

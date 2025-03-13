@@ -28,6 +28,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
@@ -170,6 +171,11 @@ public class Convert implements Runnable{
                 } else {
                   if (value instanceof String) {
                     subjectResource.addLiteral(property.getFullProperty(),valuestr);
+                    //In case of hyperlink, add hyperlink
+                    Hyperlink hyperlink = cell.getHyperlink();
+                    if (hyperlink!=null) {
+                      subjectResource.addLiteral(property.getHyperlinkProperty(),hyperlink.getAddress());
+                    }
                     //In case of line breaks, split value
                     String[] strvalues = valuestr.split("[\\n]");
                     if (strvalues.length>1) {
