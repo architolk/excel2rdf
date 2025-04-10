@@ -174,7 +174,10 @@ public class Convert implements Runnable{
                     //In case of hyperlink, add hyperlink
                     Hyperlink hyperlink = cell.getHyperlink();
                     if (hyperlink!=null) {
-                      subjectResource.addLiteral(property.getHyperlinkProperty(),hyperlink.getAddress());
+                      String linkAddress = hyperlink.getAddress();
+                      if (linkAddress!=null) {
+                        subjectResource.addLiteral(property.getHyperlinkProperty(),hyperlink.getAddress());
+                      }
                     }
                     //In case of line breaks, split value
                     String[] strvalues = valuestr.split("[\\n]");
